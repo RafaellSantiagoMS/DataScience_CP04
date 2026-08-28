@@ -7,7 +7,7 @@ Data Science & Statistical Computing — FIAP 2026
 
 ---
 ## Link do aplicativo via Streamlit Community Cloud
-[Aplicativo Streamlit](https://cp04datasciencegi-cew4whh9dp9ymqvozhu6pw.streamlit.app/)
+[Aplicativo Streamlit]([https://cp04datasciencegi-cew4whh9dp9ymqvozhu6pw.streamlit.app/](https://datasciencecp04-dffzyxea6xdvggxcvndaxj.streamlit.app/))
 
 ## Objetivo
 
