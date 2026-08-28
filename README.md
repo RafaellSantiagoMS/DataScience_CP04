@@ -6,8 +6,10 @@ Data Science & Statistical Computing — FIAP 2026
 **Grupo:** Enzo Augusto (RM562249) · Rafaell Santiago (RM564386) · Gustavo Neres (RM561785) · Sebastian Iriarte (RM563619)
 
 ---
-## Link do aplicativo via Streamlit Community Cloud
+## Link do aplicativo via Streamlit e sistama feito pelo Colab
 [Aplicativo Streamlit](https://datasciencecp04-dffzyxea6xdvggxcvndaxj.streamlit.app/)
+
+[Sistema Colab](https://colab.research.google.com/drive/1IIARQYqloRAks2LxdK6Uc4RWJ1R20mlH?usp=sharing)
 
 ## Objetivo
 
