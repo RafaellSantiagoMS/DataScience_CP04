@@ -6,21 +6,21 @@ Data Science & Statistical Computing — FIAP 2026
 **Grupo:** Enzo Augusto (RM562249) · Rafaell Santiago (RM564386) · Gustavo Neres (RM561785) · Sebastian Iriarte (RM563619)
 
 ---
-## Link do aplicativo via Streamlit e sistama feito pelo Colab
-[Aplicativo Streamlit](https://datasciencecp04-dffzyxea6xdvggxcvndaxj.streamlit.app/)
 
-[Sistema Colab](https://colab.research.google.com/drive/1IIARQYqloRAks2LxdK6Uc4RWJ1R20mlH?usp=sharing)
+## Link do aplicativo
+
+Aplicação publicada no Streamlit Community Cloud: _(https://datasciencecp04-dffzyxea6xdvggxcvndaxj.streamlit.app/)_
 
 ## Objetivo
 
 Investigar quais características ajudam a explicar o preço de venda de apartamentos na
 cidade de São Paulo e construir um modelo capaz de estimar esse preço.
 
-**Pergunta de pesquisa:** em que medida a área, o número de quartos, o número de banheiros,
-as vagas de garagem e o distrito ajudam a explicar o preço de venda de um apartamento?
+**Pergunta de pesquisa:** em que medida a área, o número de banheiros, as vagas de garagem e
+o distrito ajudam a explicar o preço de venda de um apartamento?
 
 - **Variável resposta (y):** `preco` — preço de venda, em reais (R$)
-- **Variáveis explicativas (X):** área (m²), quartos, banheiros, vagas de garagem e distrito
+- **Variáveis explicativas (X):** área (m²), banheiros, vagas de garagem e distrito
 
 ## Origem dos dados
 
@@ -43,7 +43,7 @@ necessidade de baixar arquivos manualmente.
 projeto/
 ├── app.py                    # Aplicação Streamlit
 ├── notebook.ipynb            # Análise completa (seções 1 a 10)
-├── requirements.txt          # Dependências (com versões fixadas)
+├── requirements.txt          # Dependências
 ├── README.md                 # Este arquivo
 ├── base_tratada.csv          # Base após limpeza (gerada pelo notebook)
 └── modelo_imoveis_sp.pkl     # Modelo final treinado (gerado pelo notebook)
@@ -69,17 +69,12 @@ streamlit run app.py
 ```
 
 A aplicação apresenta uma amostra da base, estatísticas descritivas, dois gráficos
-exploratórios, as métricas do modelo final (MAE, RMSE e R²), os gráficos de preço real
-versus previsto e de resíduos, e um formulário para simular o preço de um apartamento.
+exploratórios, as métricas do modelo final (MAE, RMSE e R²), os gráficos de preço real versus
+previsto e de resíduos, e um formulário para simular o preço de um apartamento.
 
 A entrada do usuário passa pelo **mesmo preparo** usado no treinamento (função
-`montar_imovel`, idêntica à do notebook).
-
-A aplicação emite **dois níveis de aviso de extrapolação**: um quando o valor informado está
-fora da faixa de toda a base, e outro quando a combinação está dentro das faixas gerais mas
-**não existe naquele distrito**. Por exemplo, o maior apartamento do Brás na base tem 196 m²
-e 2 vagas: simular 400 m² com 5 vagas ali dispara o alerta, mesmo estando dentro da faixa
-global de 30 a 620 m².
+`montar_imovel`, idêntica à do notebook), e a aplicação avisa quando algum valor informado
+está fora da faixa observada — tanto na base inteira quanto no distrito selecionado.
 
 ## Principais decisões de limpeza
 
@@ -90,9 +85,30 @@ global de 30 a 620 m².
 | Distrito com sufixo "/São Paulo" | — | Texto padronizado | transformação |
 | 215 linhas idênticas | Todas as colunas coincidem | Removidas (mesmo anúncio repetido) | 215 |
 | Condomínio igual a zero | 1.247 imóveis (≈20%) sem a informação | Variável excluída do modelo | — |
-| Preços muito altos | Verificamos que são imóveis de luxo em bairros nobres reais | **Mantidos** (fazem parte do mercado) | 0 |
+| Preços muito altos | Verificamos que são imóveis de luxo em bairros nobres reais | **Mantidos** | 0 |
 
 **Dimensões:** de **13.640 × 16** (original) para **6.197 × 6** (tratada), sem valores ausentes.
+
+## Por que o número de quartos não entra no modelo
+
+O coeficiente de `quartos` aparecia **negativo** nos primeiros testes, sugerindo que mais
+quartos reduziria o preço. Como o resultado é contraintuitivo, investigamos antes de aceitá-lo
+(seção 5 do notebook). Três verificações:
+
+1. **O coeficiente é instável.** Varia de −R$ 74.337 a −R$ 28.876 conforme as demais
+   variáveis do modelo, chegando a ficar positivo em outras especificações.
+2. **O efeito negativo é de composição.** Controlando bairro e faixa de área ao mesmo tempo,
+   o efeito **se inverte** — em Casa Verde, Bom Retiro e Brás, apartamentos de 50 a 90 m² com
+   3 quartos têm mediana **maior** que os de 2 quartos.
+3. **Não acrescenta poder preditivo.** O R² permanece em 0,827 com ou sem a variável.
+
+Pelo **princípio da parcimônia**, optamos pelo modelo mais simples. A informação que o número
+de quartos traria já está contida na área, nos banheiros e nas vagas — variáveis com as quais
+ele tem correlação de 0,55 a 0,68.
+
+> Isso **não** significa que o número de quartos seja irrelevante para o preço: isoladamente,
+> tem correlação de 0,49. Significa que ele não acrescenta informação além do que as demais
+> variáveis já explicam.
 
 ## Resumo dos modelos (conjunto de teste)
 
@@ -100,13 +116,16 @@ global de 30 a 620 m².
 |---|---|---|---|
 | 1. Referência (média) | 406.550 | 736.138 | −0,001 |
 | 2. Linear simples (área) | 187.338 | 406.068 | 0,695 |
-| 3. Linear múltipla | 162.471 | 320.744 | 0,810 |
-| **4. Polinomial (área ao quadrado)** | **155.457** | **306.156** | **0,827** |
+| 3. Linear múltipla | 164.095 | 324.763 | 0,805 |
+| **4. Polinomial (área ao quadrado)** | **155.386** | **306.041** | **0,827** |
 
 O modelo final escolhido foi o **polinomial de grau 2**. A escolha não se baseou apenas no
-maior R²: a curvatura entre área e preço já havia sido observada na análise exploratória, e
-o ganho (RMSE cerca de 4,5% menor) foi verificado no conjunto de **teste**, indicando que
-não se trata de sobreajuste.
+maior R²: a curvatura entre área e preço já havia sido observada na análise exploratória, e o
+ganho (RMSE cerca de 5,8% menor) foi verificado no conjunto de **teste**, indicando que não se
+trata de sobreajuste.
+
+**Coeficientes do modelo final:** área +R$ 3.532 por m² (mais o termo quadrático),
+banheiros +R$ 74.611, vagas +R$ 239.590 — todos com sinal positivo.
 
 ## Principais limitações conhecidas
 
@@ -116,18 +135,11 @@ não se trata de sobreajuste.
   conservação, área de lazer e vista.
 - O modelo é bem menos preciso para imóveis de **alto padrão**, onde ocorrem os maiores erros.
 - O diagnóstico indicou **heteroscedasticidade** (a dispersão dos erros cresce com o preço).
+  Uma alternativa de tratamento seria aplicar logaritmo na variável resposta.
+- O **efeito do distrito é aditivo, não multiplicativo**: a diferença entre dois bairros é
+  sempre a mesma quantia em reais, independentemente do tamanho do imóvel.
+- O modelo **não distingue** dois apartamentos de mesma área e mesmos banheiros com
+  distribuições internas diferentes, já que o número de quartos foi excluído.
 - Alguns distritos têm poucos imóveis na base, tornando suas estimativas instáveis.
-- **O efeito do distrito é aditivo, e não multiplicativo.** O distrito entra no modelo
-  somando um valor fixo em reais, então a diferença entre dois bairros é sempre a mesma
-  quantia, independentemente do tamanho do imóvel. Entre Brás e Brooklin, por exemplo, a
-  diferença prevista é de cerca de R$ 205 mil nos dois casos — o que representa 44% num
-  apartamento de 70 m², mas apenas 2,5% num de 620 m². No mercado real a localização
-  multiplica o preço: o preço mediano por m² do Brooklin (R$ 10.618) é 75% maior que o do
-  Brás (R$ 6.070) em qualquer tamanho.
-
-**O que faríamos diferente.** Aplicar logaritmo na variável resposta resolveria os dois
-últimos pontos de uma vez: estabilizaria a variância dos erros e faria o efeito dos distritos
-multiplicar o preço em vez de somar um valor fixo. Essa transformação está fora do escopo
-desta atividade, mas é o caminho natural para uma versão futura do modelo.
 - Trata-se de um estudo **observacional**: as relações encontradas são associações, não
   relações de causa e efeito.
