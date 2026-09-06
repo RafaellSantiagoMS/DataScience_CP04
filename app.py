@@ -45,16 +45,15 @@ modelo = pacote["modelo"]
 colunas_modelo = pacote["colunas"]
 distritos = pacote["distritos"]
 faixas = pacote["faixas"]
-faixas_distrito = pacote["faixas_distrito"]
+faixas_distrito = pacote.get("faixas_distrito", {})
 
 
 # ------------------------------------------------------------------
 # Mesma função de preparo usada no notebook
 # ------------------------------------------------------------------
-def montar_imovel(area_m2, quartos, banheiros, vagas, distrito, colunas_modelo):
+def montar_imovel(area_m2, banheiros, vagas, distrito, colunas_modelo):
     linha = pd.DataFrame([{
         "area_m2": area_m2,
-        "quartos": quartos,
         "banheiros": banheiros,
         "vagas": vagas,
         "distrito": distrito,
@@ -69,7 +68,7 @@ def montar_imovel(area_m2, quartos, banheiros, vagas, distrito, colunas_modelo):
 # (usa o MESMO random_state do notebook)
 # ------------------------------------------------------------------
 y = df["preco"]
-X = df[["area_m2", "quartos", "banheiros", "vagas", "distrito"]]
+X = df[["area_m2", "banheiros", "vagas", "distrito"]]
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.30, random_state=42)
 
 X_test_p = pd.get_dummies(X_test, columns=["distrito"], drop_first=True)
@@ -90,11 +89,11 @@ st.markdown(
 Esta aplicação estima o **preço de venda de um apartamento em São Paulo** a partir de suas
 características, usando um modelo de **regressão polinomial**.
 
-**Problema:** em que medida a área, o número de quartos, o número de banheiros, as vagas de
-garagem e o distrito ajudam a explicar o preço de venda de um apartamento?
+**Problema:** em que medida a área, o número de banheiros, as vagas de garagem e o distrito
+ajudam a explicar o preço de venda de um apartamento?
 
 - **Variável resposta:** preço de venda, em **reais (R$)**
-- **Variáveis usadas na previsão:** área (m²), quartos, banheiros, vagas e distrito
+- **Variáveis usadas na previsão:** área (m²), banheiros, vagas e distrito
 - **Fonte dos dados:** *São Paulo Real Estate — Sale/Rent — April 2019* (Kaggle), anúncios
   de imóveis da cidade de São Paulo, referentes a abril de 2019.
 
@@ -203,16 +202,20 @@ st.divider()
 # ------------------------------------------------------------------
 st.header("4. Simule o preço de um apartamento")
 
+st.caption(
+    "O modelo usa área, banheiros, vagas e distrito. O número de quartos foi analisado no "
+    "notebook, mas excluído por não acrescentar poder preditivo (ver seção 5 do notebook)."
+)
+
 with st.form("formulario"):
     c1, c2, c3 = st.columns(3)
 
     with c1:
         area = st.slider("Área (m²)", 30, 620, 70, step=5)
-        quartos = st.selectbox("Quartos", [1, 2, 3, 4, 5, 6], index=1)
 
     with c2:
         banheiros = st.selectbox("Banheiros", [1, 2, 3, 4, 5, 6, 7], index=1)
-        vagas = st.selectbox("Vagas de garagem", [0, 1, 2, 3, 4, 5, 6, 7, 8], index=1)
+        vagas = st.selectbox("Vagas de garagem", [0, 1, 2, 3, 4, 5, 6, 7], index=1)
 
     with c3:
         distrito = st.selectbox("Distrito", distritos)
@@ -220,55 +223,47 @@ with st.form("formulario"):
     enviar = st.form_submit_button("Prever preço")
 
 if enviar:
-    entrada = montar_imovel(area, quartos, banheiros, vagas, distrito, colunas_modelo)
+    entrada = montar_imovel(area, banheiros, vagas, distrito, colunas_modelo)
     preco = float(modelo.predict(entrada)[0])
 
     st.success(f"### Preço estimado: **R$ {preco:,.0f}**".replace(",", "."))
 
-    # Aviso quando a entrada está fora do intervalo observado
-    valores = {"area_m2": area, "quartos": quartos, "banheiros": banheiros, "vagas": vagas}
-    nomes = {"area_m2": "Área (m²)", "quartos": "Quartos", "banheiros": "Banheiros", "vagas": "Vagas"}
+    # Aviso quando a entrada está fora do intervalo observado na base
+    valores = {"area_m2": area, "banheiros": banheiros, "vagas": vagas}
+    nomes = {"area_m2": "Área (m²)", "banheiros": "Banheiros", "vagas": "Vagas"}
 
-    # Nível 1: fora da faixa observada em TODA a base
-    fora_global = []
+    # 1) Faixas GERAIS da base
+    fora_geral = []
     for variavel, (minimo, maximo) in faixas.items():
         v = valores[variavel]
         if v < minimo or v > maximo:
-            fora_global.append(f"- **{nomes[variavel]}** = {v} (faixa da base: {minimo:.0f} a {maximo:.0f})")
+            fora_geral.append(
+                f"- **{nomes[variavel]}** = {v} (faixa geral da base: {minimo:.0f} a {maximo:.0f})"
+            )
 
-    # Nível 2: dentro das faixas gerais, mas fora do que existe NAQUELE distrito
+    # 2) Faixas do DISTRITO escolhido, que costumam ser mais estreitas
     fora_distrito = []
     for variavel, (minimo, maximo) in faixas_distrito.get(distrito, {}).items():
         v = valores[variavel]
         if v < minimo or v > maximo:
             fora_distrito.append(
-                f"- **{nomes[variavel]}** = {v} (faixa em {distrito}: {minimo:.0f} a {maximo:.0f})"
+                f"- **{nomes[variavel]}** = {v} (em {distrito}, a base observa de {minimo:.0f} a {maximo:.0f})"
             )
 
-    if fora_global:
-        st.error(
-            "🚫 Uma ou mais entradas estão **fora da faixa observada em toda a base**. "
-            "A previsão é uma **extrapolação** e não deve ser considerada confiável:\n\n"
-            + "\n".join(fora_global)
+    if fora_geral:
+        st.warning(
+            "⚠️ Atenção: uma ou mais entradas estão **fora da faixa observada** na base "
+            "inteira. A previsão é uma **extrapolação** e pode não ser confiável:\n\n"
+            + "\n".join(fora_geral)
         )
     elif fora_distrito:
         st.warning(
-            f"⚠️ As entradas estão dentro das faixas gerais da base, mas **não existe nenhum "
-            f"apartamento com essas características em {distrito}**. A previsão extrapola o "
-            "que foi observado nesse distrito:\n\n"
-            + "\n".join(fora_distrito)
-            + "\n\nComo o modelo soma um valor fixo em reais para cada distrito, o resultado "
-            "fica cada vez menos confiável conforme se afasta do porte típico do bairro."
+            f"⚠️ Atenção: essa combinação está dentro da faixa geral da base, mas é "
+            f"**incomum para o distrito {distrito}**. O modelo não viu imóveis assim nesse "
+            f"bairro, então a previsão pode não ser confiável:\n\n" + "\n".join(fora_distrito)
         )
     else:
-        st.info(f"✅ Todas as entradas estão dentro da faixa observada em {distrito}.")
-
-    n_distrito = int((df["distrito"] == distrito).sum())
-    if n_distrito < 40:
-        st.caption(
-            f"ℹ️ {distrito} tem apenas {n_distrito} imóveis na base. "
-            "Estimativas para distritos com poucas observações são menos estáveis."
-        )
+        st.info("✅ Todas as entradas estão dentro da faixa observada, inclusive para este distrito.")
 
     if preco < 0:
         st.error(
